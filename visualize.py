@@ -2,7 +2,7 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
-from matplotlib.widgets import Slider, RectangleSelector
+from matplotlib.widgets import Slider, RectangleSelector, RadioButtons
 
 import os
 import argparse
@@ -44,7 +44,7 @@ class WaveformVisualizer:
     def setup_ui(self):
         self.fig, self.ax = plt.subplots(figsize=(12, 6))
         # Manual "tight layout" to maximize space but keep room for slider
-        plt.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.15)
+        plt.subplots_adjust(left=0.08, right=0.95, top=0.95, bottom=0.15)
 
         # Create line objects
         for _, name in self.mapped_files:
@@ -56,10 +56,52 @@ class WaveformVisualizer:
         self.ax.set_ylabel("Amplitude")
         self.ax.legend(loc='upper right', fontsize='x-small')
 
+        # Use FuncFormatter to show float scales while keeping data as int32
+        self.y_mode = 'Volt'
+        def y_fmt(x, pos):
+            if self.y_mode == 'Raw':
+                val = np.uint32(x)
+                return f"{val:09_X}"
+            # Do "Engineering mode" by hand
+            x = x / 2147483648
+            suffix, milli = "", "ᴇ-3"
+            if self.y_mode == 'Volt':
+                # Assuming 1Vrms full-range signal
+                x = x * 1.4142
+                suffix, milli = "V", "mV"
+            if x == 0:
+                return "0"+suffix
+            if abs(x) < 0.1:
+                x = x*1000
+                suffix = milli
+            return f"{x:.2f}"+suffix
+
+        self.ax.yaxis.set_major_formatter(ticker.FuncFormatter(y_fmt))
+
         # Slider setup
-        ax_slider = plt.axes([0.15, 0.05, 0.7, 0.03])
+        ax_slider = plt.axes([0.15, 0.05, 0.60, 0.03]) # Shrunk slightly to fit radio buttons
         self.slider = Slider(ax_slider, 'Time', 0, self.duration_sec, valinit=0)
         self.slider.on_changed(self.update_slider)
+
+        # RadioButtons for Y-axis Mode
+        ax_radio = plt.axes([0.80, 0.05, 0.15, 0.10])
+        self.radio = RadioButtons(ax_radio, ('Raw', 'Scaled', 'Volt'), active=2)
+
+        def set_y_mode(label):
+            self.y_mode = label
+            self.ax.yaxis.set_major_formatter(ticker.FuncFormatter(y_fmt))
+
+            # Update labels
+            if label == 'Raw':
+                 self.ax.set_ylabel("Amplitude (Raw)")
+            elif label == 'Scaled':
+                 self.ax.set_ylabel("Amplitude (Normalized)")
+            elif label == 'Volt':
+                 self.ax.set_ylabel("Amplitude (Volts)")
+
+            self.fig.canvas.draw_idle()
+
+        self.radio.on_clicked(set_y_mode)
 
         # Scroll Zoom setup
         self.fig.canvas.mpl_connect('scroll_event', self.on_scroll)
@@ -88,7 +130,7 @@ class WaveformVisualizer:
 
         end_sample = int((start_time + window_duration) * self.rate)
 
-        global_min_y, global_max_y = 1e9, -1e9
+        global_min_y, global_max_y = 2147483647, -2147483648
         has_data = False
 
         for line, (mm, _) in zip(self.lines, self.mapped_files):
@@ -104,13 +146,11 @@ class WaveformVisualizer:
             chunk = mm[start_sample:safe_end]
 
             if chunk.size > 0:
-                normalized = chunk.astype(np.float32) / 2147483648.0
-
                 # Precise time axis using arange
                 t_origin = start_sample / self.rate
                 t_axis = np.arange(chunk.size) / self.rate + t_origin
 
-                line.set_data(t_axis, normalized)
+                line.set_data(t_axis, chunk)
 
                 # Show markers if zoomed in enough (few samples visible)
                 if chunk.size < 300:
@@ -119,8 +159,8 @@ class WaveformVisualizer:
                 else:
                     line.set_marker("")
 
-                global_min_y = min(global_min_y, np.min(normalized))
-                global_max_y = max(global_max_y, np.max(normalized))
+                global_min_y = min(global_min_y, np.min(chunk))
+                global_max_y = max(global_max_y, np.max(chunk))
                 has_data = True
             else:
                 line.set_data([], [])
@@ -147,16 +187,17 @@ class WaveformVisualizer:
             if has_data and max_y > min_y:
                 # Symmetric zoom centered at 0
                 max_val = max(abs(min_y), abs(max_y))
+                min_val = 1670000 # very approximately 1.1mV
 
-                if max_val < 1e-6:
-                    max_val = 0.01
+                if max_val < min_val:
+                    max_val = min_val
                 else:
                     max_val *= 1.05
 
                 self.ax.set_ylim(-max_val, max_val)
             else:
-                 # Default fallback if no data
-                 self.ax.set_ylim(-1.0, 1.0)
+                 # Default fallback if no data (-1.0 to 1.0 equivalent)
+                 self.ax.set_ylim(-2147483648, 2147483648)
 
             self.fig.canvas.draw_idle()
         finally:
