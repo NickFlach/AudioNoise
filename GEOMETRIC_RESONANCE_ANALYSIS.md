@@ -1,6 +1,6 @@
 # Geometric Resonance → Audio DSP: Analysis
 
-**Context:** The geometric resonance architecture from QuantumOS/ghostOS (Kuramoto oscillators,
+**Context:** The geometric resonance architecture from QuantumOS/ghostmagicOS (Kuramoto oscillators,
 chiral dynamics, Berry phase, Riemannian curvature, chiral anomaly detection) was designed for
 process scheduling. This document analyzes how these concepts map to AudioNoise — and whether
 they reveal opportunities to extend Linus's work.
@@ -31,7 +31,7 @@ happens when musicians play together.
 
 ### 1. Kuramoto Oscillator Coupling → Coupled LFOs
 
-| QuantumOS/ghostOS | AudioNoise |
+| QuantumOS/ghostmagicOS | AudioNoise |
 |---|---|
 | Process oscillator phase θᵢ | `lfo.idx` (32-bit phase accumulator) |
 | Natural frequency ωᵢ | `lfo.step` (phase increment per sample) |
@@ -57,7 +57,7 @@ phase values. Minimal — maybe 10 extra instructions per sample in a chain.
 
 ### 2. Chiral Dynamics → Feedback Stability
 
-| QuantumOS/ghostOS | AudioNoise |
+| QuantumOS/ghostmagicOS | AudioNoise |
 |---|---|
 | η (chirality strength) | Signal flow direction preference |
 | Γ (damping coefficient) | Feedback attenuation |
@@ -91,7 +91,7 @@ When the phaser LFO sweeps the center frequency, the allpass filter coefficients
 a closed loop in parameter space. The Berry phase γ = ∮ A·dl measures the **geometric
 phase** accumulated by the signal along this loop.
 
-| QuantumOS/ghostOS | AudioNoise |
+| QuantumOS/ghostmagicOS | AudioNoise |
 |---|---|
 | Oscillator phase space | Biquad coefficient space |
 | Berry connection A_μ | Phase response gradient |
@@ -122,7 +122,7 @@ the richest sound; a straight-line path (zero Berry curvature) gives a dull swee
 
 ### 4. Riemann Curvature → Effect Space Complexity
 
-| QuantumOS/ghostOS | AudioNoise |
+| QuantumOS/ghostmagicOS | AudioNoise |
 |---|---|
 | Ricci scalar R | Coefficient space curvature |
 | R > 0 (converging) | Stable, predictable filter behavior |
@@ -141,7 +141,7 @@ attenuate feedback or reduce Q. A self-regulating "edge of chaos" effect.
 
 ### 5. Chiral Anomaly → Harmonic Asymmetry Detection
 
-| QuantumOS/ghostOS | AudioNoise |
+| QuantumOS/ghostmagicOS | AudioNoise |
 |---|---|
 | Left-propagating modes | Even harmonics |
 | Right-propagating modes | Odd harmonics |
